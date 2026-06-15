@@ -1,8 +1,48 @@
 const { default: makeWASocket, useMultiFileAuthState, DisconnectReason, fetchLatestBaileysVersion } = require('@whiskeysockets/baileys');
 const pino = require('pino');
 const qrcode = require('qrcode-terminal');
+const QRCode = require('qrcode');
+const http = require('http');
 
 const AUTH_FOLDER = '/data/auth';
+const PORT = process.env.PORT || 3000;
+
+let currentQR = null;
+let connectionStatus = 'Başlanır...';
+
+// QR kodu brauzerdə göstərmək üçün sadə HTTP server
+http.createServer(async (req, res) => {
+  if (currentQR) {
+    try {
+      const qrImage = await QRCode.toDataURL(currentQR, { width: 400 });
+      res.writeHead(200, { 'Content-Type': 'text/html' });
+      res.end(`
+        <html>
+          <head><meta http-equiv="refresh" content="20"></head>
+          <body style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;background:#111;color:#fff;">
+            <h2>WhatsApp QR Kodu</h2>
+            <img src="${qrImage}" />
+            <p>Sayfa 20 saniyədə bir yenilənir. Skan et: WhatsApp > Linked Devices > Link a Device</p>
+          </body>
+        </html>
+      `);
+    } catch (e) {
+      res.writeHead(500);
+      res.end('QR yaradılarkən xəta: ' + e.message);
+    }
+  } else {
+    res.writeHead(200, { 'Content-Type': 'text/html' });
+    res.end(`
+      <html>
+        <head><meta http-equiv="refresh" content="5"></head>
+        <body style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;background:#111;color:#fff;">
+          <h2>Status: ${connectionStatus}</h2>
+          <p>QR kod hazır deyil və ya artıq qoşulub. Səhifə 5 saniyədə bir yenilənir.</p>
+        </body>
+      </html>
+    `);
+  }
+}).listen(PORT, () => console.log(`🌐 QR server işləyir, port: ${PORT}`));
 
 async function startBot() {
   const { state, saveCreds } = await useMultiFileAuthState(AUTH_FOLDER);
@@ -19,8 +59,10 @@ async function startBot() {
     const { connection, lastDisconnect, qr } = update;
 
     if (qr) {
+      currentQR = qr;
+      connectionStatus = 'QR kod hazırdır - skan et';
       console.log('==========================================');
-      console.log('📱 QR KODU - WhatsApp > Linked Devices > Link a Device ilə skan et');
+      console.log('📱 QR KODU hazırdır - brauzerdə servis URL-inə gir');
       console.log('==========================================');
       qrcode.generate(qr, { small: true });
     }
@@ -28,6 +70,7 @@ async function startBot() {
     if (connection === 'close') {
       const statusCode = lastDisconnect?.error?.output?.statusCode;
       const shouldReconnect = statusCode !== DisconnectReason.loggedOut;
+      connectionStatus = 'Bağlantı bağlandı, yenidən qoşulur...';
       console.log('⚠️ Bağlantı bağlandı. Status code:', statusCode);
       console.log('⚠️ Xəta detalları:', JSON.stringify(lastDisconnect?.error?.output?.payload || lastDisconnect?.error?.message || lastDisconnect?.error));
       console.log('⚠️ Yenidən qoşulma:', shouldReconnect);
@@ -35,6 +78,8 @@ async function startBot() {
         setTimeout(() => startBot(), 3000);
       }
     } else if (connection === 'open') {
+      currentQR = null;
+      connectionStatus = 'Qoşuldu ✅';
       console.log('✅ WhatsApp-a qoşuldu!');
     }
   });
