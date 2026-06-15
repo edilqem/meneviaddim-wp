@@ -6,7 +6,7 @@ const pino = require('pino');
 // Format: ölkə kodu + nömrə, + işarəsiz, boşluqsuz
 // Məsələn Azərbaycan: 994501234567
 // =============================================
-const PHONE_NUMBER = '994XXXXXXXXX';
+const PHONE_NUMBER = '994507390019';
 // =============================================
 
 const AUTH_FOLDER = '/data/auth';
