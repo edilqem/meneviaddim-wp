@@ -24,9 +24,14 @@ async function startBot() {
     }
 
     if (connection === 'close') {
-      const shouldReconnect = lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut;
-      console.log('⚠️ Bağlantı bağlandı. Yenidən qoşulma:', shouldReconnect);
-      if (shouldReconnect) startBot();
+      const statusCode = lastDisconnect?.error?.output?.statusCode;
+      const shouldReconnect = statusCode !== DisconnectReason.loggedOut;
+      console.log('⚠️ Bağlantı bağlandı. Status code:', statusCode);
+      console.log('⚠️ Xəta detalları:', JSON.stringify(lastDisconnect?.error?.output?.payload || lastDisconnect?.error?.message || lastDisconnect?.error));
+      console.log('⚠️ Yenidən qoşulma:', shouldReconnect);
+      if (shouldReconnect) {
+        setTimeout(() => startBot(), 3000);
+      }
     } else if (connection === 'open') {
       console.log('✅ WhatsApp-a qoşuldu!');
     }
