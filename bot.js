@@ -1,17 +1,12 @@
 const { default: makeWASocket, useMultiFileAuthState, DisconnectReason } = require('@whiskeysockets/baileys');
 const pino = require('pino');
-
-// =============================================
-// CONFIG - BURAYA BOTUN WHATSAPP NÖMRƏSİNİ YAZ
-// Format: ölkə kodu + nömrə, + işarəsiz, boşluqsuz
-// Məsələn Azərbaycan: 994501234567
-// =============================================
-const PHONE_NUMBER = '994507390019';
-// =============================================
+const express = require('express');
+const qrcode = require('qrcode');
 
 const AUTH_FOLDER = '/data/auth';
 
-let pairingRequested = false;
+let currentQR = null;
+let connectionStatus = 'Bağlanır...';
 
 async function startBot() {
   const { state, saveCreds } = await useMultiFileAuthState(AUTH_FOLDER);
@@ -22,30 +17,24 @@ async function startBot() {
     printQRInTerminal: false,
   });
 
-  // Qeydiyyatdan keçməyibsə - pairing kodu istə
-  if (!sock.authState.creds.registered && !pairingRequested) {
-    pairingRequested = true;
-    setTimeout(async () => {
-      try {
-        const code = await sock.requestPairingCode(PHONE_NUMBER);
-        console.log('==========================================');
-        console.log('🔑 PAIRING CODE:', code);
-        console.log('WhatsApp > Linked Devices > Link a Device > "Link with phone number instead" > bu kodu yaz');
-        console.log('==========================================');
-      } catch (e) {
-        console.log('Pairing code xətası:', e.message);
-      }
-    }, 3000);
-  }
-
   sock.ev.on('connection.update', (update) => {
-    const { connection, lastDisconnect } = update;
+    const { connection, lastDisconnect, qr } = update;
+
+    if (qr) {
+      currentQR = qr;
+      connectionStatus = '📱 QR kodu skan et';
+      console.log('🔑 Yeni QR kod yarandı - veb səhifəyə bax');
+    }
+
     if (connection === 'close') {
       const shouldReconnect = lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut;
-      console.log('⚠️ Bağlantı bağlandı. Yenidən qoşulma:', shouldReconnect);
+      connectionStatus = '⚠️ Bağlantı bağlandı, yenidən qoşulur...';
+      console.log(connectionStatus);
       if (shouldReconnect) startBot();
     } else if (connection === 'open') {
-      console.log('✅ WhatsApp-a qoşuldu!');
+      currentQR = null;
+      connectionStatus = '✅ WhatsApp-a qoşuldu!';
+      console.log(connectionStatus);
     }
   });
 
@@ -68,4 +57,36 @@ async function startBot() {
 }
 
 startBot();
+
+// ---- QR kodu göstərmək üçün veb səhifə ----
+const app = express();
+
+app.get('/', async (req, res) => {
+  if (currentQR) {
+    const qrImage = await qrcode.toDataURL(currentQR);
+    res.send(`
+      <html>
+        <head><meta http-equiv="refresh" content="15"></head>
+        <body style="text-align:center; font-family:sans-serif; padding-top:40px;">
+          <h2>${connectionStatus}</h2>
+          <img src="${qrImage}" style="width:300px;height:300px;" />
+          <p>WhatsApp → Linked Devices → Link a Device → bu kodu skan et</p>
+          <p>Kod köhnəlibsə səhifə özü yenilənəcək (15 san)</p>
+        </body>
+      </html>
+    `);
+  } else {
+    res.send(`
+      <html>
+        <head><meta http-equiv="refresh" content="5"></head>
+        <body style="text-align:center; font-family:sans-serif; padding-top:40px;">
+          <h2>${connectionStatus}</h2>
+        </body>
+      </html>
+    `);
+  }
+});
+
+app.listen(process.env.PORT || 3000, () => console.log('🌐 Veb server işə düşdü'));
+
 console.log('🚀 Bot başladılır...');
