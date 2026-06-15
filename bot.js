@@ -1,12 +1,8 @@
 const { default: makeWASocket, useMultiFileAuthState, DisconnectReason } = require('@whiskeysockets/baileys');
 const pino = require('pino');
-const express = require('express');
-const qrcode = require('qrcode');
+const qrcode = require('qrcode-terminal');
 
 const AUTH_FOLDER = '/data/auth';
-
-let currentQR = null;
-let connectionStatus = 'Bağlanır...';
 
 async function startBot() {
   const { state, saveCreds } = await useMultiFileAuthState(AUTH_FOLDER);
@@ -21,20 +17,18 @@ async function startBot() {
     const { connection, lastDisconnect, qr } = update;
 
     if (qr) {
-      currentQR = qr;
-      connectionStatus = '📱 QR kodu skan et';
-      console.log('🔑 Yeni QR kod yarandı - veb səhifəyə bax');
+      console.log('==========================================');
+      console.log('📱 QR KODU - WhatsApp > Linked Devices > Link a Device ilə skan et');
+      console.log('==========================================');
+      qrcode.generate(qr, { small: true });
     }
 
     if (connection === 'close') {
       const shouldReconnect = lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut;
-      connectionStatus = '⚠️ Bağlantı bağlandı, yenidən qoşulur...';
-      console.log(connectionStatus);
+      console.log('⚠️ Bağlantı bağlandı. Yenidən qoşulma:', shouldReconnect);
       if (shouldReconnect) startBot();
     } else if (connection === 'open') {
-      currentQR = null;
-      connectionStatus = '✅ WhatsApp-a qoşuldu!';
-      console.log(connectionStatus);
+      console.log('✅ WhatsApp-a qoşuldu!');
     }
   });
 
@@ -57,36 +51,4 @@ async function startBot() {
 }
 
 startBot();
-
-// ---- QR kodu göstərmək üçün veb səhifə ----
-const app = express();
-
-app.get('/', async (req, res) => {
-  if (currentQR) {
-    const qrImage = await qrcode.toDataURL(currentQR);
-    res.send(`
-      <html>
-        <head><meta http-equiv="refresh" content="15"></head>
-        <body style="text-align:center; font-family:sans-serif; padding-top:40px;">
-          <h2>${connectionStatus}</h2>
-          <img src="${qrImage}" style="width:300px;height:300px;" />
-          <p>WhatsApp → Linked Devices → Link a Device → bu kodu skan et</p>
-          <p>Kod köhnəlibsə səhifə özü yenilənəcək (15 san)</p>
-        </body>
-      </html>
-    `);
-  } else {
-    res.send(`
-      <html>
-        <head><meta http-equiv="refresh" content="5"></head>
-        <body style="text-align:center; font-family:sans-serif; padding-top:40px;">
-          <h2>${connectionStatus}</h2>
-        </body>
-      </html>
-    `);
-  }
-});
-
-app.listen(process.env.PORT || 3000, () => console.log('🌐 Veb server işə düşdü'));
-
 console.log('🚀 Bot başladılır...');
