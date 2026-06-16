@@ -163,7 +163,17 @@ async function handleMemberMessage(jid, name, text) {
       `• Tapşırıq həmçinin qrupda da əks olunacaq\n\n` +
       `Tapşırığı tamamladıqda /etdim ✅\n` +
       `Tamamlaya bilmədikdə /etmedim ❌\n` +
-      `İstirahət lazımdırsa /icaze 🏖 (minimum 3 həftədən bir)`);
+      `İstirahət lazımdırsa /icaze 🏖 (minimum 3 həftədən bir)\n` +
+      `Qoşulmaqdan çıxmaq istəsən /stop`);
+  }
+
+  if (text === '/stop') {
+    if (!data.members[jid])
+      return send(jid, 'Onsuz da qeydiyyatda deyilsən. Qoşulmaq üçün /start yaz.');
+    const adi = data.members[jid].name || 'Üzv';
+    delete data.members[jid];
+    saveData(data);
+    return send(jid, `👋 ${adi}, qeydiyyatdan çıxdın — daha tapşırıq almayacaqsan.\n\nFikrini dəyişsən, istənilən vaxt /start yazıb geri qayıda bilərsən. Allah razı olsun. 🤲`);
   }
 
   if (text === '/addim') {
@@ -266,6 +276,11 @@ async function handleMemberMessage(jid, name, text) {
       `Növbəti həftə eyni tapşırıq yenə veriləcək. 💪`);
     return send(jid, '✅ Səbəbin qeyd edildi. Növbəti həftə yenə cəhd et! 💪');
   }
+
+  // Qeydiyyatsız adam ilk dəfə (qeyri-əmr) yazanda — qısa yönləndirmə
+  if (!member) {
+    return send(jid, 'Salam! 🌙 Bu *Mənəvi Addım* botudur.\n\nQoşulmaq üçün /start yaz.\n(Sonradan çıxmaq istəsən /stop yazarsan.)');
+  }
 }
 
 // =====================================================
@@ -281,6 +296,7 @@ async function handleAdminCommand(text, replyJid) {
       `/send — Qrupa tapşırıqları paylaş\n` +
       `/report — Həftəlik hesabat göndər\n` +
       `/members — Qeydiyyatlı üzvlər\n` +
+      `/uzvsil [ad] — Üzvü siyahıdan sil\n` +
       `/backup — data.json ehtiyat nüsxəsini al\n` +
       `/reset — Yeni həftəyə sıfırla`);
     return true;
@@ -345,6 +361,22 @@ async function handleAdminCommand(text, replyJid) {
       return `👤 ${m.name} — Davamlılıq: ${m.streak || 0} | Tamamlanan: ${(m.completed || []).length}${icazeText}`;
     }).join('\n');
     send(replyJid, `*Üzvlər (${members.length} nəfər):*\n\n${list}`);
+    return true;
+  }
+
+  if (text.startsWith('/uzvsil ')) {
+    const q = text.slice('/uzvsil '.length).trim().toLowerCase();
+    if (!q) { send(replyJid, '❌ Ad yaz: /uzvsil Ad'); return true; }
+    const data = loadData();
+    const matches = Object.entries(data.members).filter(([id, m]) => (m.name || '').toLowerCase() === q);
+    if (!matches.length) {
+      send(replyJid, `❌ "${q}" adlı üzv tapılmadı. Dəqiq adları görmək üçün /members yaz.`);
+      return true;
+    }
+    const adi = matches[0][1].name;
+    matches.forEach(([id]) => delete data.members[id]);
+    saveData(data);
+    send(replyJid, `🗑 Silindi: "${adi}" (${matches.length} qeyd).`);
     return true;
   }
 
