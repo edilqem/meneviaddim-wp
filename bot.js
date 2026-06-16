@@ -10,20 +10,19 @@ const schedule = require('node-schedule');
 // =====================================================
 // AYARLAR — BURADAN DƏYİŞ
 // =====================================================
-const OWN_NUMBER = '994507390019';               // botun öz nömrəsi (QR ilə qoşulan)
-const SECOND_ADMIN = '994705232223';             // ikinci admin / ehtiyat nömrə
 const GROUP_JID = '120363428221467854@g.us';     // "Mənəvi Addım" qrupu
 
-// WhatsApp DM-lərdə göndərəni nömrə əvəzinə @lid (gizli ID) kimi göstərir.
-// Admin nömrələrinin @lid-ləri (Railway loglarından götürüldü):
-const ADMIN_LIDS = [
-  '181994961006607', // = 994705232223 (ikinci admin)
-  '190258612326413', // = 994507390019 (öz nömrən)
-];
+// Admin nömrəsi (botu öz telefonundan idarə edən əsas nömrə):
+const ADMIN_NUMBER = '994507390019';
+const ADMIN_JID = ADMIN_NUMBER + '@s.whatsapp.net';
+const BACKUP_JID = ADMIN_JID;                    // həftəlik avtomatik backup bura gedir
 
-const SELF_JID = OWN_NUMBER + '@s.whatsapp.net';
-const SECOND_ADMIN_JID = SECOND_ADMIN + '@s.whatsapp.net';
-const BACKUP_JID = SECOND_ADMIN_JID;             // həftəlik avtomatik ehtiyat nüsxə bura gedir
+// WhatsApp DM-lərdə göndərəni nömrə əvəzinə @lid (gizli ID) kimi göstərir.
+// DİQQƏT: @lid bot HESABINA bağlıdır. Bot nömrəsini dəyişdiyin üçün KÖHNƏ @lid-lər keçərsizdir.
+// Yeni bot qoşulandan sonra 507390019-dan bota mesaj yaz, logdakı "from: XXXX@lid"-i bura yaz:
+const ADMIN_LIDS = [
+  // '130739576279242', // = 994507390019? — yeni bot qoşulandan sonra TƏSDİQLƏ və aktivləşdir
+];
 
 const ICAZE_COOLDOWN_DAYS = 21;                  // icazələr arası minimum gün (3 həftə)
 
