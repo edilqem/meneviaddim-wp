@@ -14,6 +14,13 @@ const OWN_NUMBER = '994507390019';               // botun öz nömrəsi (QR ilə
 const SECOND_ADMIN = '994705232223';             // ikinci admin / ehtiyat nömrə
 const GROUP_JID = '120363428221467854@g.us';     // "Mənəvi Addım" qrupu
 
+// WhatsApp DM-lərdə göndərəni nömrə əvəzinə @lid (gizli ID) kimi göstərir.
+// Admin nömrələrinin @lid-ləri (Railway loglarından götürüldü):
+const ADMIN_LIDS = [
+  '181994961006607', // = 994705232223 (ikinci admin)
+  '190258612326413', // = 994507390019 (öz nömrən)
+];
+
 const SELF_JID = OWN_NUMBER + '@s.whatsapp.net';
 const SECOND_ADMIN_JID = SECOND_ADMIN + '@s.whatsapp.net';
 const BACKUP_JID = SECOND_ADMIN_JID;             // həftəlik avtomatik ehtiyat nüsxə bura gedir
@@ -544,9 +551,9 @@ async function startBot() {
       const text = (msg.message.conversation || msg.message.extendedTextMessage?.text || '').trim();
       if (!text) return;
 
-      // Admin müəyyənləşdirmə
-      const isPrimaryAdmin = fromMe && remoteJid === SELF_JID;                 // öz nömrəndən "Özünə mesaj"
-      const isSecondAdmin = !fromMe && !isGroup && senderNum === SECOND_ADMIN; // ikinci nömrədən DM
+      // Admin müəyyənləşdirmə (@lid əsaslı)
+      const isPrimaryAdmin = fromMe && !isGroup;                              // botun öz hesabından ("Özünə mesaj")
+      const isSecondAdmin = !fromMe && !isGroup && ADMIN_LIDS.includes(senderNum); // admin @lid-i ilə DM
       const isAdminMsg = isPrimaryAdmin || isSecondAdmin;
 
       console.log(`📩 "${text}" | from: ${senderJid} | grup: ${isGroup} | admin: ${isAdminMsg}`);
